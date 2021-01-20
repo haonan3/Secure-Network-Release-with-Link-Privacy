@@ -21,7 +21,7 @@ Contact: Haonan Wang (haonan3@illinois.edu), Carl Yang (yangji9181@gmail.com)
 
 
 ## Installation
-Install PyTorch following the instuctions on the [official website] (https://pytorch.org/). The code has been tested over PyTorch 1.2.0 versions.
+Install PyTorch following the instuctions on the [official website] (https://pytorch.org/). The code has been tested over PyTorch 1.1.0 versions.
 
 Then install the other dependencies.
 ```
