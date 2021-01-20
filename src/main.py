@@ -17,7 +17,6 @@ from src.train import train
 dir_path = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 
-# what is relabeled_dblp2? new_dblp2? new_IMDB_MULTI? Resampled_IMDB_MULTI?
 multi_graph_dataset = set(['relabeled_dblp2', 'new_dblp2', 'dblp2','new_IMDB_MULTI', 'IMDB_MULTI', 'Resampled_IMDB_MULTI'])
 
 def arg_parser():
