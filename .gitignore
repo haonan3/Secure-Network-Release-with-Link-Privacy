@@ -2,6 +2,7 @@ log/
 data/
 src/__pycache__
 src/graph_drawer.py
+src/test.py
 src/GGAN/__pycache__
 src/DPGGAN/__pycache__
 graph_classification_exp/__pycache__
