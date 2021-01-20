@@ -18,9 +18,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ADADP(Optimizer):
     
     def __init__(self, params, lr=1e-3):
-        
         defaults = dict(lr=lr)
-       
         self.p0 = None
         self.p1 = None
         self.lrs = lr
@@ -48,7 +46,7 @@ class ADADP(Optimizer):
                 dd = p.data.clone()
                 self.p0.append(dd)
 
-                self.p1.append(p.data  -  self.lrs*p.grad.data)
+                self.p1.append(p.data - self.lrs*p.grad.data)
                 p.data.add_(-0.5*self.lrs, p.grad.data)
 
     def step2(self, tol=1.0):

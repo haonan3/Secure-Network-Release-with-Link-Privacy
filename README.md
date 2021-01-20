@@ -25,6 +25,10 @@ Install PyTorch following the instuctions on the [official website] (https://pyt
 
 Then install the other dependencies.
 ```
+conda env create -f environment.yml
+
+conda activate dpggan
+
 pip install -r requirements.txt
 ```
 
@@ -41,3 +45,5 @@ sh run.sh
 ```
 
 Default parameters are not the best performing-hyper-parameters. Hyper-parameters need to be specified through the commandline arguments.
+
+For graph classification experiment and link prediction experiment, please refer `run_graph_classification_exp.sh` and `run_link_classification_exp.sh`.

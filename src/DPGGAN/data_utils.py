@@ -273,7 +273,7 @@ def get_roc_score(emb, adj_orig, edges_pos, edges_neg):
     return roc_score, ap_score
 
 
-def make_adj_label(index,adj_matrix):
+def make_adj_label(index, adj_matrix):
     adj_label = np.zeros((len(index),len(index)))
     for i,v in enumerate(index):
         adj_label[i] = adj_matrix[v,index].toarray()

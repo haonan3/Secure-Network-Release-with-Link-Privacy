@@ -9,7 +9,7 @@ import math
 
 import torch
 from torch.nn.parameter import Parameter
-import DPGraphGen.functional as F
+import src.DPGGAN.functional as F
 from torch.nn.modules import Module
 
 

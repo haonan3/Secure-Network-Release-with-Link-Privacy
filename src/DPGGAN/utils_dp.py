@@ -1,7 +1,7 @@
 import torch
 from collections import OrderedDict
 from torch.autograd import Variable
-from DPGraphGen import gaussian_moments as gm, px_expander
+from src.DPGGAN import gaussian_moments as gm, px_expander
 
 '''
 Update privacy budget
@@ -40,7 +40,7 @@ def create_cum_grads(model):
 
 
 
-def update_privacy_account(args, model_args, model):
+def update_privacy_account(model_args, model):
     stop_signal = False
     if 'dp_counter' in set(model.__dict__.keys()):
         model.dp_counter.T += 1

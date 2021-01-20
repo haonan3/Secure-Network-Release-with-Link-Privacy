@@ -1,10 +1,13 @@
 log/
 data/
 src/__pycache__
-src/GraphGen/__pycache__
-src/DPGraphGen/__pycache__
-graph_classification_exp/
+src/GGAN/__pycache__
+src/DPGGAN/__pycache__
 graph_classification_exp/__pycache__
 graph_classification_exp/models/__pycache__
+graph_classification_exp/logs
+graph_classification_exp/dataset
+link_classification_exp/dataset
+link_classification_exp/log
 .DS_Store
 .idea
