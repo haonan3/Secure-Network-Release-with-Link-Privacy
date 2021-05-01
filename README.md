@@ -1,20 +1,19 @@
-# Secure Network Release with Link Privacy
+# Secure Deep Graph Generation with Link Differential Privacy
 
-This repository is the PyTorch implementation of Secure Network Release with Link Privacy.
+This repository is the PyTorch implementation of DPGGan (IJCAI 2021).
 
 [arXiv](https://arxiv.org/abs/2005.00455)
 
 If you make use of the code/experiment, please cite our paper (Bibtex below).
 
 ```
-@misc{yang2020secure,
-    title={Secure Network Release with Link Privacy},
-    author={Carl Yang and Haonan Wang and Lichao Sun and Bo Li},
-    year={2020},
-    eprint={2005.00455},
-    archivePrefix={arXiv},
-    primaryClass={cs.SI}
+@inproceedings{yang2020secure,
+    title={Secure Deep Graph Generation with Link Differential Privacy},
+    author={Carl Yang and Haonan Wang and Ke Zhang and Lichao Sun and Liang Chen},
+    year={2021},
+    booktitle={The International Joint Conference on Artificial Intelligence (IJCAI)},
 }
+
 ```
 
 Contact: Haonan Wang (haonan3@illinois.edu), Carl Yang (yangji9181@gmail.com)
