@@ -6,16 +6,23 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn import Parameter
 
-from GraphGen.aggregators import MeanAggregator
-from GraphGen.encoders import Encoder
+from src.GGAN.aggregators import MeanAggregator
+from src.GGAN.encoders import Encoder
 
-class GraphGen(nn.Module):
+# from gcn_layer import GraphConvolution
+import numpy as np
 
+from src.GGAN.gcn_layer import GraphConvolution
+
+
+class GGAN(nn.Module):
     def __init__(self, args, model_args, features_np, adj_lists):
-        super(GraphGen,self).__init__()
+        super(GGAN,self).__init__()
+        self.args = args
+        self.features_np = features_np
         features = nn.Embedding(features_np.shape[0], features_np.shape[1])
-        # features.weight = nn.Parameter(torch.FloatTensor(features_np), requires_grad=False)
-        features.weight = nn.Parameter(torch.randn(features_np.shape[0], features_np.shape[1]), requires_grad=False)
+        features.weight = nn.Parameter(torch.FloatTensor(features_np), requires_grad=False)
+        # features.weight = nn.Parameter(torch.randn(features_np.shape[0], features_np.shape[1]), requires_grad=False)
         self.features = features
         self.node_num = features_np.shape[0]
         self.feature_dim = features_np.shape[1]
@@ -45,13 +52,26 @@ class GraphGen(nn.Module):
         self.dec2 = nn.Linear(self.dec1_dim, self.dec2_dim, bias=True)
 
         # mapping
-        self.mapping1 = Parameter(torch.Tensor(self.dec2_dim, self.dec2_dim))
-        self.mapping2 = Parameter(torch.Tensor(self.dec2_dim, self.dec2_dim))
+        self.mapping1 = nn.Linear(self.dec2_dim, self.dec2_dim, bias=False)
+        self.mapping2 = nn.Linear(self.dec2_dim, self.dec2_dim, bias=False)
+
+        self.is_gan = 0
+        if args.model_name == 'GGAN':
+            self.disc_gcn = GraphConvolution(in_features=self.dec2_dim, out_features=self.dec2_dim)
+            self.disc_linear = nn.Linear(in_features=self.dec2_dim, out_features=1, bias=False)
+            self.is_gan = 1
 
 
-    def init_params(self):
-        nn.init.xavier_normal_(self.mapping1)
-        nn.init.xavier_normal_(self.mapping2)
+    def discriminate(self, origin_feature, origin_adj, generated_adj):
+        origin_embed = self.disc_gcn(origin_feature, origin_adj)
+        orig_prob = self.disc_linear(origin_embed)
+        pos_label = torch.ones_like(orig_prob)
+        generated_embed = self.disc_gcn(origin_feature, generated_adj)
+        generated_prob = self.disc_linear(generated_embed)
+        neg_label = torch.zeros_like(generated_prob)
+        pred = torch.cat((orig_prob, generated_prob), dim=0)
+        label = torch.cat((pos_label, neg_label), dim=0)
+        return pred, label
 
 
     def encode(self, nodes):
@@ -64,8 +84,7 @@ class GraphGen(nn.Module):
 
         # samp_neighs is neighs of nodes, self.enc2.num_sample == self.enc3.num_sample
         samp_neighs = [_set(_sample(to_neigh, self.enc2.num_sample, ))
-                       if len(to_neigh) >= self.enc2.num_sample
-                       else to_neigh
+                       if len(to_neigh) >= self.enc2.num_sample else to_neigh
                        for to_neigh in to_neighs]
 
         # unique_nodes_list is all nodes required in layer2
@@ -78,6 +97,7 @@ class GraphGen(nn.Module):
         feature_dict = {}
         for i, v in enumerate(unique_nodes_list):
             feature_dict[v] = i
+
         features_embeds = embeds_layer1
 
         # feed Look-up dict and features_embeds into layer2
@@ -90,41 +110,55 @@ class GraphGen(nn.Module):
         return mu, logvar
 
 
-    def decode(self, input_features, nodes, for_test=False):
+    def decode(self, input_features):
         output = self.dec1(input_features)
-        output = F.tanh(output)
+        output = F.relu(output)
         output = self.dec2(output)
-        # return output
-        emb1 = torch.mm(output, self.mapping1)
-        emb2 = torch.mm(output, self.mapping2)
+        emb1 = self.mapping1(output)
+        emb2 = self.mapping2(output)
         return emb1, emb2
 
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(logvar)
-        eps = torch.randn_like(std)
-        return eps.mul(std).add_(mu)
-
-
-    def inner_product_with_mapping(self, emb1,emb2, nodes):
+    def inner_product_with_mapping(self, emb1,emb2): # cos similarity
+        emb1 = F.normalize(emb1, dim=-1, p=2)
+        emb2 = F.normalize(emb2, dim=-1, p=2)
         adj = torch.mm(emb1, emb2.t())
-        adj_without_sigmoid = adj
-        return adj_without_sigmoid
+        return adj
 
+    def get_sub_adj_feat(self, nodes):
+        subgraph_feature = []
+        for i,v in enumerate(nodes):
+            subgraph_feature.append(self.features_np[v])
+        subgraph_feature_tensor = torch.FloatTensor(np.array(subgraph_feature))
+        return subgraph_feature_tensor
 
     def forward(self, nodes, sub_adj, for_test=False):
+        gan_pred, gan_label = None, None
+        sub_adj_feat = self.get_sub_adj_feat(nodes)
         mu, logvar = self.encode(nodes)
-        h = self.reparameterize(mu, logvar)
-        emb1, emb2 = self.decode(h, nodes, for_test)
-        adj_without_sigmoid = self.inner_product_with_mapping(emb1, emb2, nodes)
-        return mu, logvar, adj_without_sigmoid, None, None
+        mu_q = F.normalize(mu, dim=-1, p=2)
+        logvar_sub = -logvar
+        std0 = self.args.std
+        std_q = torch.exp(0.5 * logvar_sub) * std0
+        epsilon = torch.randn(std_q.shape)
+        h = mu_q + int(for_test) * epsilon * std_q
+        emb1, emb2 = self.decode(h)
+        reconst_adj = self.inner_product_with_mapping(emb1, emb2)
 
-    def loss_function(self, preds, labels, mu, logvar, n_nodes, pos_weight, epoch, orig_prob, generated_prob):
+        if not for_test and self.is_gan:
+            gan_pred, gan_label = self.discriminate(sub_adj_feat, sub_adj, reconst_adj)
+        return mu, logvar_sub, reconst_adj, gan_pred, gan_label
+
+
+    def loss_function(self, preds, labels, logvar_sub, pos_weight, gan_pred, gan_label):
         cost = F.binary_cross_entropy_with_logits(preds, labels, pos_weight=torch.FloatTensor([pos_weight]))
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
         # https://arxiv.org/abs/1312.6114
         # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        KLD = - (0.5 / n_nodes) * torch.mean(torch.sum(1 + 2 * logvar - mu.pow(2) - logvar.exp().pow(2), 1))
-        return cost + KLD
-
+        # Trick: KL is constant w.r.t. to mu_q after we normalize mu_q.
+        kl = (0.5 * (-logvar_sub + torch.exp(logvar_sub) - 1.0)).sum(dim=1).mean()
+        if self.is_gan:
+            gan_loss = F.binary_cross_entropy_with_logits(gan_pred, gan_label)
+            return cost + self.args.kl_ratio * kl + self.args.discriminator_ratio * gan_loss
+        else:
+            return cost + self.args.kl_ratio * kl
